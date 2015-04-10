@@ -40,6 +40,27 @@ public class ServiceCalendar extends Model implements Cloneable, Serializable {
     
     public ServiceCalendar() {};
     
+    /**
+     * This 'default calendar' is needed to create trips that don't screw up the system
+     */
+    public ServiceCalendar(String agencyId, String gtfsServiceId, String desc) 
+    {
+    	
+		this.agencyId = agencyId;
+		this.gtfsServiceId = gtfsServiceId;
+		this.description = desc;
+		this.monday = true;
+		this.tuesday = true;
+		this.wednesday = true;
+		this.thursday = true;
+		this.friday = true;
+		this.saturday = false;
+		this.sunday = false;
+		this.startDate = new LocalDate(1980,1,1);
+		this.endDate = new LocalDate(2100,1,1);
+
+    }
+    
     public ServiceCalendar(Calendar calendar) {
     	this.gtfsServiceId = calendar.service.service_id;
     	this.monday = calendar.monday == 1;

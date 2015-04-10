@@ -466,12 +466,15 @@ G.RouteTypes = Backbone.Collection.extend({
 
 G.Trip = Backbone.Model.extend({
     defaults: {
+    	
+    	// Using defaults of null was causing MapDB to fail to save,
+    	// so now only doing so for those required for trip creation.
       tripDescription: null,
       patternId: null,
-      calendarId: null,
-      startTime: null,
-      endTime: null,
-      headway: null,
+      calendarId: '',
+      startTime: '',
+      endTime: '',
+      headway: '',
       useFrequency: null
     },
 

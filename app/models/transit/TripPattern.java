@@ -503,4 +503,42 @@ public class TripPattern extends Model implements Cloneable, Serializable {
 		
 		return distances[loc.getSegmentIndex()] + (distances[loc.getSegmentIndex() + 1] - distances[loc.getSegmentIndex()]) * loc.getSegmentFraction();
 	}
+	
+	
+	/** 
+	 * Recast the TripPatternStops that form this pattern to stop times, in order to use them
+	 * in frequency-based trips
+	 */
+	public ArrayList<StopTime> patternStopsAsStopTimes()
+	{
+		ArrayList ret = new ArrayList<StopTime>();
+		int timing = 0;
+		
+		for (TripPatternStop curr : patternStops)
+		{
+			StopTime st = new StopTime(); 		
+			timing += curr.defaultTravelTime;
+			
+//			if (curr.timepoint)
+//			{
+				st.stopId = curr.stopId;
+				st.arrivalTime = timing;
+				st.departureTime = timing + curr.defaultDwellTime;
+				st.stopHeadsign = ""; 									//TODO
+				st.pickupType = StopTimePickupDropOffType.SCHEDULED;	//TODO
+				st.dropOffType = StopTimePickupDropOffType.SCHEDULED; 	//TODO
+				
+				ret.add(st);	
+//			}
+//			else
+//			{
+//				// TODO check correct behaviour wrt timing points against spec
+//				// I can't see how to capture this in the current data model
+//			}
+			
+			timing += curr.defaultDwellTime;
+		}
+		
+		return ret;
+	}
 }

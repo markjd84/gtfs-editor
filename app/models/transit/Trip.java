@@ -150,4 +150,5 @@ public class Trip extends Model implements Cloneable, Serializable {
 
 		return ret;
 	}
+	
 }   

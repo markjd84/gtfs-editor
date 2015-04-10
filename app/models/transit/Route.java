@@ -38,6 +38,8 @@ public class Route extends Model implements Cloneable, Serializable {
     public String comments;
 
     public StatusType status;
+    
+    public boolean publiclyVisible = false;
 
     public String agencyId;
 
