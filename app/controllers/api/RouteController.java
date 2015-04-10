@@ -22,7 +22,6 @@ import datastore.GlobalTx;
 import play.mvc.Before;
 import play.mvc.Controller;
 import play.mvc.With;
-import play.Logger;
 
 @With(Secure.class)
 public class RouteController extends Controller {
@@ -106,7 +105,7 @@ public class RouteController extends Controller {
             if(route.gtfsRouteId == null) {
                 route.gtfsRouteId = "ROUTE_" + route.id;
             }
-      	            
+            
             tx.routes.put(route.id, route);
             tx.commit();
 

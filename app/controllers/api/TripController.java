@@ -145,15 +145,17 @@ public class TripController extends Controller {
             	
             	
             	/*
-            	 * How did this work before? Is it that PostGres didn't insist on all fields?
+            	 * How did this work before? Is it that Postgres didn't insist on all fields?
+            	 * 
+            	 * At the moment, just creating a blank 'default' calendar for each trip
+            	 * This is then overwritten when a user provides better info
             	 */
             	if ((trip.calendarId == null) || (trip.calendarId.equals("")))
             	{
+        			Logger.warn("Did not obtain a usable calendar ID from UI or store");
             		def = new ServiceCalendar(trip.agencyId, "", "Default calendar");
             		trip.calendarId = def.id;
-            		Logger.warn("Did not obtain a usable calendar ID from UI");
             	}
-            		
             	
             	if (trip.wheelchairBoarding == null)
             		trip.wheelchairBoarding = AttributeAvailabilityType.UNKNOWN;
@@ -162,9 +164,7 @@ public class TripController extends Controller {
             		trip.invalid = false;
             	
             	int newTripStopCount = trip.stopTimes.size();
-            	Logger.info("Pattern contains stop count:" + newTripStopCount);
             	int passedTripStopCount = tx.tripPatterns.get(trip.patternId).patternStops.size();
-            	Logger.info("Passed trip stop count:" + passedTripStopCount);
             	        	
             	if (!validPatId || newTripStopCount != passedTripStopCount) {
             		tx.rollback();
@@ -178,32 +178,9 @@ public class TripController extends Controller {
                 Logger.error("Failed to populate trip data!");
                 badRequest();
         	}
-        	
-        	Logger.info("Listing object properties....");
-        	Logger.info("    ....gtfsTripId\t" + trip.gtfsTripId);
-        	Logger.info("    ....tripHeadsign\t" + trip.tripHeadsign);
-        	Logger.info("    ....tripShortName\t" + trip.tripShortName);
-        	Logger.info("    ....tripDescription\t" + trip.tripDescription);
-        	Logger.info("    ....tripDirection\t" + trip.tripDirection);
-        	Logger.info("    ....blockId\t" + trip.blockId);
-        	Logger.info("    ....routeId\t" + trip.routeId);
-        	Logger.info("    ....patternId\t" + trip.patternId);
-        	Logger.info("    ....calendarId\t" + trip.calendarId);
-        	Logger.info("    ....wheelchairBoarding\t" + trip.wheelchairBoarding);
-        	Logger.info("    ....useFrequency\t" + trip.useFrequency);
-        	Logger.info("    ....startTime\t" + trip.startTime);
-        	Logger.info("    ....endTime\t" + trip.endTime);
-        	Logger.info("    ....headway\t" + trip.headway);
-        	Logger.info("    ....invalid\t" + trip.invalid);
-        	Logger.info("    ....stopTimes\t" + trip.stopTimes.toString());
-        	Logger.info("    ....agencyId\t" + trip.agencyId);
-        	
         	      	        	
-
         	tx.trips.put(trip.id, trip);
         	
-        	// TODO there is probably a nicer way to do this
-        	// but I think it might require changing the front end
         	if (def != null)
         	{
         		tx.calendars.put(def.id, def);

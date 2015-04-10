@@ -42,6 +42,8 @@ public class ServiceCalendar extends Model implements Cloneable, Serializable {
     
     /**
      * This 'default calendar' is needed to create trips that don't screw up the system
+     * 
+     * It will ultimately get overwritten by a user selection.
      */
     public ServiceCalendar(String agencyId, String gtfsServiceId, String desc) 
     {
