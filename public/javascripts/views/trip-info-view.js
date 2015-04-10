@@ -92,11 +92,11 @@ var GtfsEditor = GtfsEditor || {};
 
       var data = G.Utils.serializeForm($(evt.target));
 
-      data.serviceCalendar = data.frequencyServiceCalendar;
+//      data.serviceCalendar = data.frequencyServiceCalendar;
+      data.calendarId = data.frequencyServiceCalendar;
+      data = _.omit(data, ['file', 'scheduleType', 'frequencyServiceCalendar', 'timetableServiceCalendar', 'pattern']);
 
-      data = _.omit(data, ['file', 'scheduleType', 'frequencyServiceCalendar', 'timetableServiceCalendar']);
-
-      data.pattern = selectedPatternId;
+      data.patternId = selectedPatternId;
       data.startTime = this.calcTime(data.startTimeString);
       data.endTime = this.calcTime(data.endTimeString);
       data.headway = this.calcTime(data.serviceFrequencyString);
@@ -190,6 +190,7 @@ var GtfsEditor = GtfsEditor || {};
 
     },
 
+    
     onTripCreate: function(evt) {
 
       evt.preventDefault();
@@ -197,9 +198,12 @@ var GtfsEditor = GtfsEditor || {};
       var selectedPatternId  = this.$('#tripPattern').val();
 
       var tripData = {
+    	agencyId: this.model.get('agencyId'),
         useFrequency: true,
-        pattern: selectedPatternId,
+        patternId: selectedPatternId,
         tripDescription: this.$('[name=name]').val()
+        
+        
       };
 
       var view = this;
@@ -237,8 +241,9 @@ var GtfsEditor = GtfsEditor || {};
 
       var tripData = {
         useFrequency: true,
-        pattern: selectedPatternId,
+        patternId: selectedPatternId,
         tripDescription: this.$('[name=name]').val(),
+        calendarId: serviceCalendarId,
         serviceCalendar: serviceCalendarId,
         startTime: existingTrip.startTime,
         endTime: existingTrip.endTime,
@@ -355,7 +360,7 @@ var GtfsEditor = GtfsEditor || {};
 
           var data =  jQuery.extend({}, this.model.tripPatterns.get(selectedPatternId).trips.get(selectedTripId).attributes)  ;
 
-          data.pattern = selectedPatternId;
+          data.patternId = selectedPatternId;
           data.startTimeString = this.convertTime(data.startTime);
           data.endTimeString = this.convertTime(data.endTime);
           data.serviceFrequencyString = this.convertTime(data.headway);

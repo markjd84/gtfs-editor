@@ -1,14 +1,19 @@
 package controllers.api;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 
+import models.transit.AttributeAvailabilityType;
+import models.transit.ServiceCalendar;
 import models.transit.StopTime;
+import models.transit.Route;
 import models.transit.Trip;
 import models.transit.TripPattern;
 import models.transit.TripPatternStop;
+import models.transit.TripDirection;
 import controllers.Base;
 import controllers.Application;
 import controllers.Secure;
@@ -77,13 +82,15 @@ public class TripController extends Controller {
         try {
         	Trip trip = Base.mapper.readValue(params.get("body"), Trip.class);
         	
+        	Logger.info("Attempting to create trip for agency " + trip.agencyId + " from session by agency " + session.get("agencyId"));
+        	
             if (session.contains("agencyId") && !session.get("agencyId").equals(trip.agencyId))
             	badRequest();
         	
         	if (!VersionedDataStore.agencyExists(trip.agencyId)) {
         		badRequest();
         		return;
-        	}
+        	}  	
         	
         	tx = VersionedDataStore.getAgencyTx(trip.agencyId);
         	
@@ -93,17 +100,119 @@ public class TripController extends Controller {
         		return;
         	}
         	
-        	if (!tx.tripPatterns.containsKey(trip.patternId) || trip.stopTimes.size() != tx.tripPatterns.get(trip.patternId).patternStops.size()) {
-        		tx.rollback();
-        		badRequest();
-        		return;
+        	boolean validPatId = tx.tripPatterns.containsKey(trip.patternId);
+        	Logger.info("Valid pattern id:" + validPatId);
+        	
+        	// TODO: check timetable-based trips are not broken by the slightly adjusted API submission
+        	// (should be fine as nothing has been removed and non-required data is ignored)
+        	if (trip.useFrequency)
+        	{
+        		// Retrieve pattern stops and recast
+        		// May be easier to refactor this here, as StopTime requires lots of bits of additional data
+        		ArrayList<StopTime> patStops = tx.tripPatterns.get(trip.patternId).patternStopsAsStopTimes();        		
+        		trip.stopTimes = patStops;        		
+        	}
+        	else
+        	{
+        		Logger.info("Not using frequencies for trip " + trip.id);
         	}
         	
-        	tx.trips.put(trip.id, trip);
-        	tx.commit();
+        	// Check a GTFS ID has been set (or set one)
+        	if (trip.gtfsTripId == null)
+        	{
+        		trip.gtfsTripId = "TRIP_" + trip.id;
+        	}
         	
+        	// in case we need a default
+        	ServiceCalendar def = null;
+        	
+        	try {
+        		// Pull all the info required from the associated route
+            	if (validPatId)
+            	{
+            		Route route = tx.routes.get(tx.tripPatterns.get(trip.patternId).routeId);
+            		trip.routeId = route.id;
+            		trip.tripShortName = route.routeShortName;
+            		trip.tripHeadsign = tx.tripPatterns.get(trip.patternId).headsign;
+            	}
+
+            	if (trip.tripDirection == null)
+            		// This needs to be retrieved from the UI somehow
+            		trip.tripDirection = TripDirection.A;
+            	
+            	if (trip.blockId == null)
+            		trip.blockId = "";
+            	
+            	
+            	/*
+            	 * How did this work before? Is it that PostGres didn't insist on all fields?
+            	 */
+            	if ((trip.calendarId == null) || (trip.calendarId.equals("")))
+            	{
+            		def = new ServiceCalendar(trip.agencyId, "", "Default calendar");
+            		trip.calendarId = def.id;
+            		Logger.warn("Did not obtain a usable calendar ID from UI");
+            	}
+            		
+            	
+            	if (trip.wheelchairBoarding == null)
+            		trip.wheelchairBoarding = AttributeAvailabilityType.UNKNOWN;
+            	
+            	if (trip.invalid == null)
+            		trip.invalid = false;
+            	
+            	int newTripStopCount = trip.stopTimes.size();
+            	Logger.info("Pattern contains stop count:" + newTripStopCount);
+            	int passedTripStopCount = tx.tripPatterns.get(trip.patternId).patternStops.size();
+            	Logger.info("Passed trip stop count:" + passedTripStopCount);
+            	        	
+            	if (!validPatId || newTripStopCount != passedTripStopCount) {
+            		tx.rollback();
+            		badRequest();
+            		return;
+            	}
+            	
+        	} catch (Exception e) {
+        		e.printStackTrace();
+                if (tx != null) tx.rollbackIfOpen();
+                Logger.error("Failed to populate trip data!");
+                badRequest();
+        	}
+        	
+        	Logger.info("Listing object properties....");
+        	Logger.info("    ....gtfsTripId\t" + trip.gtfsTripId);
+        	Logger.info("    ....tripHeadsign\t" + trip.tripHeadsign);
+        	Logger.info("    ....tripShortName\t" + trip.tripShortName);
+        	Logger.info("    ....tripDescription\t" + trip.tripDescription);
+        	Logger.info("    ....tripDirection\t" + trip.tripDirection);
+        	Logger.info("    ....blockId\t" + trip.blockId);
+        	Logger.info("    ....routeId\t" + trip.routeId);
+        	Logger.info("    ....patternId\t" + trip.patternId);
+        	Logger.info("    ....calendarId\t" + trip.calendarId);
+        	Logger.info("    ....wheelchairBoarding\t" + trip.wheelchairBoarding);
+        	Logger.info("    ....useFrequency\t" + trip.useFrequency);
+        	Logger.info("    ....startTime\t" + trip.startTime);
+        	Logger.info("    ....endTime\t" + trip.endTime);
+        	Logger.info("    ....headway\t" + trip.headway);
+        	Logger.info("    ....invalid\t" + trip.invalid);
+        	Logger.info("    ....stopTimes\t" + trip.stopTimes.toString());
+        	Logger.info("    ....agencyId\t" + trip.agencyId);
+        	
+        	      	        	
+
+        	tx.trips.put(trip.id, trip);
+        	
+        	// TODO there is probably a nicer way to do this
+        	// but I think it might require changing the front end
+        	if (def != null)
+        	{
+        		tx.calendars.put(def.id, def);
+        	}
+        	tx.commit();
+        	Logger.info("Successfully saved trip id " + trip.id + " for agency " + trip.agencyId);  
         	renderJSON(Base.toJson(trip, false));
         } catch (Exception e) {
+        	
             e.printStackTrace();
             if (tx != null) tx.rollbackIfOpen();
             badRequest();
