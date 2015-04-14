@@ -2,6 +2,7 @@ package controllers.api;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -105,21 +106,20 @@ public class TripController extends Controller {
         	
         	// TODO: check timetable-based trips are not broken by the slightly adjusted API submission
         	// (should be fine as nothing has been removed and non-required data is ignored)
-        	if (trip.useFrequency)
-        	{
+        	//
+        	// Also the JSON received by the controller here includes stop times; should this be used, or 
+        	// should we draw them from DB?
+        	if (trip.useFrequency) {
         		// Retrieve pattern stops and recast
-        		// May be easier to refactor this here, as StopTime requires lots of bits of additional data
         		ArrayList<StopTime> patStops = tx.tripPatterns.get(trip.patternId).patternStopsAsStopTimes();        		
-        		trip.stopTimes = patStops;        		
+        		trip.stopTimes = patStops;       
         	}
-        	else
-        	{
+        	else {
         		Logger.info("Not using frequencies for trip " + trip.id);
         	}
         	
         	// Check a GTFS ID has been set (or set one)
-        	if (trip.gtfsTripId == null)
-        	{
+        	if (trip.gtfsTripId == null) {
         		trip.gtfsTripId = "TRIP_" + trip.id;
         	}
         	
@@ -128,8 +128,7 @@ public class TripController extends Controller {
         	
         	try {
         		// Pull all the info required from the associated route
-            	if (validPatId)
-            	{
+            	if (validPatId) {
             		Route route = tx.routes.get(tx.tripPatterns.get(trip.patternId).routeId);
             		trip.routeId = route.id;
             		trip.tripShortName = route.routeShortName;
@@ -150,9 +149,8 @@ public class TripController extends Controller {
             	 * At the moment, just creating a blank 'default' calendar for each trip
             	 * This is then overwritten when a user provides better info
             	 */
-            	if ((trip.calendarId == null) || (trip.calendarId.equals("")))
-            	{
-        			Logger.warn("Did not obtain a usable calendar ID from UI or store");
+            	if ((trip.calendarId == null) || (trip.calendarId.equals(""))) {
+        			Logger.warn("Did not obtain a usable calendar ID from UI");
             		def = new ServiceCalendar(trip.agencyId, "", "Default calendar");
             		trip.calendarId = def.id;
             	}
@@ -172,7 +170,7 @@ public class TripController extends Controller {
             		return;
             	}
             	
-        	} catch (Exception e) {
+        	} catch (NullPointerException e) {
         		e.printStackTrace();
                 if (tx != null) tx.rollbackIfOpen();
                 Logger.error("Failed to populate trip data!");
@@ -181,8 +179,7 @@ public class TripController extends Controller {
         	      	        	
         	tx.trips.put(trip.id, trip);
         	
-        	if (def != null)
-        	{
+        	if (def != null) {
         		tx.calendars.put(def.id, def);
         	}
         	tx.commit();
@@ -201,7 +198,7 @@ public class TripController extends Controller {
     	
         try {
         	Trip trip = Base.mapper.readValue(params.get("body"), Trip.class);
-        	
+        	        	
         	if (session.contains("agencyId") && !session.get("agencyId").equals(trip.agencyId))
             	badRequest();
         	
@@ -212,6 +209,17 @@ public class TripController extends Controller {
         	
         	tx = VersionedDataStore.getAgencyTx(trip.agencyId);
         	
+        	// TODO remove debug
+        	Logger.info(params.get("body"));
+        	
+        	// Reusing the code from the createTrip method above, just to ensure consistency
+        	if (trip.useFrequency) {
+        		// Retrieve pattern stops and recast
+        		ArrayList<StopTime> patStops = tx.tripPatterns.get(trip.patternId).patternStopsAsStopTimes();        		
+        		trip.stopTimes = patStops;       
+        	}
+
+
         	if (!tx.trips.containsKey(trip.id)) {
         		tx.rollback();
         		badRequest();
@@ -219,6 +227,13 @@ public class TripController extends Controller {
         	}
         	
         	if (!tx.tripPatterns.containsKey(trip.patternId) || trip.stopTimes.size() != tx.tripPatterns.get(trip.patternId).patternStops.size()) {
+        		tx.rollback();
+        		badRequest();
+        		return;
+        	}
+        	
+        	// Disallow trips that have no start or end times, or have no difference between the two
+        	if (trip.startTime == null || trip.endTime == null || trip.startTime.equals(trip.endTime)) {
         		tx.rollback();
         		badRequest();
         		return;

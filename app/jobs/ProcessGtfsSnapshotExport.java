@@ -201,7 +201,7 @@ public class ProcessGtfsSnapshotExport implements Runnable {
 							
 							com.conveyal.gtfs.model.StopTime gst = new com.conveyal.gtfs.model.StopTime();
 							gst.arrival_time = st.arrivalTime != null ? st.arrivalTime : Entity.INT_MISSING;
-							gst.departure_time = st.departureTime != null ? gst.departure_time : Entity.INT_MISSING;
+							gst.departure_time = st.departureTime != null ? st.departureTime : Entity.INT_MISSING;
 							
 							if (st.dropOffType != null)
 								gst.drop_off_type = st.dropOffType.toGtfsValue();
@@ -235,15 +235,25 @@ public class ProcessGtfsSnapshotExport implements Runnable {
 						}
 						
 						// create frequencies as needed
-						if (trip.useFrequency != null && trip.useFrequency) {
-							Frequency f = new Frequency();
-							f.trip = gtfsTrip;
-							f.start_time = trip.startTime;
-							f.end_time = trip.endTime;
-							f.exact_times = 0;
-							f.headway_secs = trip.headway;
-							feed.frequencies.put(gtfsTrip.trip_id, f);
+						try 
+						{
+							if (trip.useFrequency != null && trip.useFrequency) {
+								Frequency f = new Frequency();
+								f.trip = gtfsTrip;
+								f.start_time = trip.startTime;
+								f.end_time = trip.endTime;
+								f.exact_times = 0;
+								f.headway_secs = trip.headway;
+								feed.frequencies.put(gtfsTrip.trip_id, f);
+							}
+						} catch (NullPointerException e) {
+							e.printStackTrace();
+							Logger.error("Error writing frequencies for " + gtfsTrip.trip_id + " "
+																			+ trip.tripHeadsign + " "
+																			+ trip.tripShortName
+																			+ " ...omitted.");
 						}
+
 					}
 				}
 			}
