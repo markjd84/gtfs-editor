@@ -24,6 +24,7 @@ import org.mapdb.Fun.Tuple2;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -42,6 +43,7 @@ import play.Logger;
 import utils.GeoUtils;
 import utils.JacksonSerializers;
 
+@JsonIgnoreProperties({"useFrequency" })
 public class TripPattern extends Model implements Cloneable, Serializable {
 	public static final long serialVersionUID = 1;
 

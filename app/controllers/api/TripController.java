@@ -105,10 +105,7 @@ public class TripController extends Controller {
         	Logger.info("Valid pattern id:" + validPatId);
         	
         	// TODO: check timetable-based trips are not broken by the slightly adjusted API submission
-        	// (should be fine as nothing has been removed and non-required data is ignored)
-        	//
-        	// Also the JSON received by the controller here includes stop times; should this be used, or 
-        	// should we draw them from DB?
+        	// (should be fine as nothing has been removed and non-required data is ignored)        	
         	if (trip.useFrequency) {
         		// Retrieve pattern stops and recast
         		ArrayList<StopTime> patStops = tx.tripPatterns.get(trip.patternId).patternStopsAsStopTimes();        		
@@ -209,16 +206,12 @@ public class TripController extends Controller {
         	
         	tx = VersionedDataStore.getAgencyTx(trip.agencyId);
         	
-        	// TODO remove debug
-        	Logger.info(params.get("body"));
-        	
         	// Reusing the code from the createTrip method above, just to ensure consistency
         	if (trip.useFrequency) {
         		// Retrieve pattern stops and recast
         		ArrayList<StopTime> patStops = tx.tripPatterns.get(trip.patternId).patternStopsAsStopTimes();        		
         		trip.stopTimes = patStops;       
         	}
-
 
         	if (!tx.trips.containsKey(trip.id)) {
         		tx.rollback();
