@@ -145,7 +145,17 @@ public class ProcessGtfsSnapshotExport implements Runnable {
 							TripPattern pattern = atx.tripPatterns.get(trip.patternId);
 							
 							Tuple2<String, Integer> nextKey = feed.shapePoints.ceilingKey(new Tuple2(pattern.id, null));
-							if ((nextKey == null || !pattern.id.equals(nextKey.a)) && pattern.shape != null && !pattern.useStraightLineDistances) {
+
+							if ( route.getGtfsId().contains("1004") ) {
+								Logger.info("Attempting to draw shape for trip " + gtfsTrip.trip_id);
+								Logger.info("Next key... (should be null) " + nextKey);
+								Logger.info("Next key.a ... (OR should n/eq pattId) " + nextKey.a);
+								Logger.info("Patt id ..." + pattern.id);
+								Logger.info("Patt shape... (should be present)" + pattern.shape);
+								Logger.info("Patt SLD... (should be false)" + pattern.useStraightLineDistances);
+							}
+							
+							if ((nextKey == null || !pattern.id.equals(nextKey.a)) && pattern.shape != null /* && !pattern.useStraightLineDistances */ ) {
 								// this shape has not yet been saved
 								double[] coordDistances = GeoUtils.getCoordDistances(pattern.shape);
 								
@@ -156,7 +166,7 @@ public class ProcessGtfsSnapshotExport implements Runnable {
 								}
 							}
 							
-							if (pattern.shape != null && !pattern.useStraightLineDistances)
+							if (pattern.shape != null /* && !pattern.useStraightLineDistances */ )
 								gtfsTrip.shape_id = pattern.id;
 							
 							if (trip.wheelchairBoarding != null) {
